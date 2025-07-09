@@ -2,6 +2,7 @@
 import * as React from "react"
 import { ThemeProvider as NextThemesProvider } from "next-themes"
 import { SessionProvider } from "next-auth/react"
+import { Toaster } from "sonner" // Import directly from sonner
 
 export function Providers({
     children,
@@ -9,7 +10,15 @@ export function Providers({
 }: React.ComponentProps<typeof NextThemesProvider>) {
     return (
         <SessionProvider refetchInterval={5 * 60}>
-            <NextThemesProvider {...props}>{children}</NextThemesProvider>
+            <NextThemesProvider {...props}>
+                {children}
+                <Toaster 
+                    position="top-right"
+                    richColors
+                    expand={true}
+                    closeButton
+                />
+            </NextThemesProvider>
         </SessionProvider>
     )
 }
