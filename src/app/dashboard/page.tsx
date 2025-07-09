@@ -15,19 +15,33 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer"
 import { Map, BookOpen, Trophy, Users } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { DashboardStats } from "@/components/dashboard/DashboardStats"
-import { HeroProgress } from "@/components/dashboard/HeroProgress"
-import { ActiveRoadmaps } from "@/components/dashboard/ActiveRoadmaps"
-import { RecentActivity } from "@/components/dashboard/RecentActivity"
+import { DashboardStats } from "@/components/dashboard/dashboard-stats"
+import { HeroProgress } from "@/components/dashboard/hero-progress"
+import { ActiveRoadmaps } from "@/components/dashboard/active-roadmaps"
+import { RecentActivity } from "@/components/dashboard/recent-activity"
 import { toast } from "sonner" // Make sure this import is correct
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { ApiError } from "next/dist/server/api-utils"
 
 export default function Page() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [prompt, setPrompt] = useState<string>('');
   const [dashboardData, setDashboardData] = useState({
     stats: null,
     roadmaps: null,
@@ -79,6 +93,49 @@ export default function Page() {
     }
   };
 
+const handleGenerateRoadmap = async () => {
+  if (!prompt.trim()) {
+    toast.error("Please enter a prompt");
+    return;
+  }
+
+  try {
+    toast.loading("Generating roadmap...", { id: 'roadmap-generation' });
+    
+    const response = await fetch("/api/roadmap/generate", {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      method: "POST",
+      body: JSON.stringify({ prompt }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    
+    toast.success("Roadmap generated successfully!", { id: 'roadmap-generation' });
+    
+    // Clear the prompt
+    setPrompt('');
+    
+    // Refresh dashboard data to show new roadmap
+    await fetchDashboardData();
+    
+    if (data.roadmapId) {
+      router.push(`/dashboard/roadmaps/${data.roadmapId}`);
+    }
+    
+    return data;
+    
+  } catch (error: ApiError | any) {
+    console.error('Error generating roadmap:', error);
+    toast.error(error.message || "Failed to generate roadmap. Please try again.", { id: 'roadmap-generation' });
+  }
+};
   // Show loading spinner while checking authentication
   if (status === 'loading') {
     return (
@@ -145,16 +202,48 @@ export default function Page() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-4">
-              <Button
-                className="h-20 flex-col gap-2 bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  toast.success("Navigating to roadmap generator...");
-                  router.push('/dashboard/roadmaps/generate');
-                }}
-              >
-                <Map className="h-6 w-6" />
-                <span>Generate Roadmap</span>
-              </Button>
+              <Drawer>
+                <DrawerTrigger asChild>
+                  <Button variant="outline" className="h-20 flex-col gap-2" >
+                    <Map className="h-6 w-6" />
+                    <span>Generate Roadmap</span>
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <div className="mx-auto w-full max-w-sm">
+                    <DrawerHeader>
+                      <DrawerTitle>Generate Roadmap</DrawerTitle>
+                      <DrawerDescription>Select a topic to generate a personalized learning roadmap.</DrawerDescription>
+                    </DrawerHeader>
+                    <div>
+                      <Label htmlFor="roadmap-prompt" className="block mb-2">
+                        Roadmap Topic
+                      </Label>
+                      <Input
+                        id="roadmap-prompt"
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        placeholder="e.g. Web Development, Data Science"
+                        className="w-full border-4 placeholder:text-gray-500 -mb-5"
+                      />
+                    </div>
+                    <DrawerFooter>
+                      <Button
+                        variant="outline"
+                        className="mt-4 w-full"
+                        onClick={() => {
+                          handleGenerateRoadmap();
+                          toast.success("Roadmap generation submitted!");
+                          router.push('/dashboard/roadmaps/generate');
+                        }}
+                      >Submit</Button>
+                      <DrawerClose asChild>
+                        <Button variant="secondary">Cancel</Button>
+                      </DrawerClose>
+                    </DrawerFooter>
+                  </div>
+                </DrawerContent>
+              </Drawer>
               <Button
                 variant="outline"
                 className="h-20 flex-col gap-2 border-blue-200 hover:bg-blue-50"

@@ -13,7 +13,7 @@ export function Providers({
             <NextThemesProvider {...props}>
                 {children}
                 <Toaster 
-                    position="top-right"
+                    position="top-center"
                     richColors
                     expand={true}
                     closeButton

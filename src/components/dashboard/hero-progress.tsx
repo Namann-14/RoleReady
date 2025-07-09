@@ -42,7 +42,7 @@ export function HeroProgress({ stats, userEmail }: HeroProgressProps) {
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-2xl text-blue-900">
-              Welcome back, {userName}! 👋
+              Welcome back, {userName}! 
             </CardTitle>
             <CardDescription className="text-blue-700">
               You're making great progress on your learning journey

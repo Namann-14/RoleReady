@@ -4,10 +4,11 @@ import mongoose, { Document, model, models, Schema, Types } from "mongoose";
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   email: string;
-  password: string;
+  password?: string; // Make optional for OAuth users
   fname: string;
   lname?: string;
   profile_pic?: string;
+  provider?: string; // Add provider field for OAuth
   roadmap: Types.ObjectId[];
   quizzes: Types.ObjectId[];
   certificates: Types.ObjectId[];
@@ -24,7 +25,7 @@ const userSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: true,
+      required: false, // Not required for OAuth users
     },
     fname: {
       type: String,
@@ -36,16 +37,23 @@ const userSchema = new Schema<IUser>(
     profile_pic: {
       type: String,
     },
+    provider: {
+      type: String,
+      enum: ['credentials', 'github', 'google'],
+      default: 'credentials',
+    },
     roadmap: [{ type: Schema.Types.ObjectId, ref: "RoadmapProgress" }],
     quizzes: [{ type: Schema.Types.ObjectId, ref: "QuizAttempt" }],
+    certificates: [{ type: Schema.Types.ObjectId, ref: "Certificate" }],
   },
   {
     timestamps: true,
   }
 );
 
+// Only hash password if it exists (for credentials users)
 userSchema.pre("save", async function () {
-  if (this.isModified("password")) {
+  if (this.isModified("password") && this.password) {
     this.password = await bcrypt.hash(this.password, 10);
   }
 });

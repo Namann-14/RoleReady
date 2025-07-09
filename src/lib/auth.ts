@@ -28,7 +28,7 @@ export const authOptions: NextAuthOptions = {
           await ConnectToDatabase();
 
           const user = await User.findOne({ email: credentials.email });
-          if (!user) {
+          if (!user || !user.password) {
             return null;
           }
 
@@ -44,6 +44,8 @@ export const authOptions: NextAuthOptions = {
           return {
             id: user._id.toString(),
             email: user.email,
+            name: user.fname + (user.lname ? ` ${user.lname}` : ""),
+            image: user.profile_pic || null,
           };
         } catch (error) {
           console.error("Auth error", error);
@@ -61,15 +63,97 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async signIn({ user, account, profile }) {
+      try {
+        await ConnectToDatabase();
+
+        // Handle OAuth providers (GitHub/Google)
+        if (account?.provider === 'github' || account?.provider === 'google') {
+          const email = user.email;
+          
+          if (!email) {
+            console.error("No email provided by OAuth provider");
+            return false;
+          }
+
+          // Check if user already exists
+          let existingUser = await User.findOne({ email });
+
+          if (!existingUser) {
+            // Create new user for OAuth sign-in
+            try {
+              const newUser = await User.create({
+                fname: user.name?.split(' ')[0] || 'User',
+                lname: user.name?.split(' ').slice(1).join(' ') || '',
+                email: email,
+                profile_pic: user.image || null,
+                provider: account.provider,
+                // Don't set password for OAuth users
+                roadmap: [],
+                quizzes: [],
+                certificates: [],
+              });
+
+              console.log(`New ${account.provider} user created:`, newUser.email);
+            } catch (createError) {
+              console.error("Error creating OAuth user:", createError);
+              return false;
+            }
+          } else {
+            // Update existing user's profile picture if it's newer/different
+            if (user.image && user.image !== existingUser.profile_pic) {
+              await User.findByIdAndUpdate(existingUser._id, {
+                profile_pic: user.image,
+                // Update name if it's missing or generic
+                ...((!existingUser.fname || existingUser.fname === 'User') && user.name && {
+                  fname: user.name.split(' ')[0],
+                  lname: user.name.split(' ').slice(1).join(' ') || '',
+                })
+              });
+            }
+            console.log(`Existing user signed in with ${account.provider}:`, existingUser.email);
+          }
+        }
+
+        return true;
+      } catch (error) {
+        console.error("SignIn callback error:", error);
+        return false;
+      }
+    },
+    async jwt({ token, user, account }) {
+      // Initial sign-in
       if (user) {
         token.id = user.id;
+        token.name = user.name;
+        token.email = user.email;
+        token.picture = user.image;
       }
+
+      // Fetch fresh user data from database on each token refresh
+      if (token.email) {
+        try {
+          await ConnectToDatabase();
+          const dbUser = await User.findOne({ email: token.email });
+          if (dbUser) {
+            token.id = dbUser._id.toString();
+            token.name = dbUser.fname + (dbUser.lname ? ` ${dbUser.lname}` : "");
+            token.email = dbUser.email;
+            token.picture = dbUser.profile_pic;
+          }
+        } catch (error) {
+          console.error("JWT callback error:", error);
+        }
+      }
+
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
         (session.user as any).id = token.id as string;
+        session.user.name = token.name as string;
+        session.user.email = token.email as string;
+        session.user.image = token.picture as string;
       }
       return session;
     },
@@ -80,7 +164,7 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60,
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
