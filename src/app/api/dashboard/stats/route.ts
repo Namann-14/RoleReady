@@ -6,7 +6,6 @@ import AIRoadmap from '@/models/aiRoadmap.model';
 import RoadmapProgress from '@/models/roadmapProgress.model';
 import QuizAttempt from '@/models/quizAttempt.model';
 import { authOptions } from '@/lib/auth';
-import { boolean } from 'zod';
 
 export async function GET(request: NextRequest) {
   try {

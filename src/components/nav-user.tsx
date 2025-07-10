@@ -29,7 +29,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { useSession } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
+import { Button } from "./ui/button"
 
 
 export function NavUser() {
@@ -47,14 +48,14 @@ export function NavUser() {
               size="lg"
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
-              {/* <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.image} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+              <Avatar className="h-8 w-8 rounded-lg">
+                <AvatarImage src={user?.image} alt={user?.name} />
+                <AvatarFallback className="rounded-lg">{user?.name.charAt(0).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
-              </div> */}
+                <span className="truncate font-medium">{user?.name}</span>
+                <span className="truncate text-xs">{user?.email}</span>
+              </div>
               <ChevronsUpDown className="ml-auto size-4" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
@@ -101,7 +102,9 @@ export function NavUser() {
             <DropdownMenuSeparator />
             <DropdownMenuItem>
               <LogOut />
+              <Button variant="ghost" className="w-full justify-start" onClick={() => signOut()}>
               Log out
+              </Button>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

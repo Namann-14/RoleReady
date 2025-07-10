@@ -52,14 +52,14 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
+      title: "Roadmaps",
       url: "#",
       icon: SquareTerminal,
       isActive: true,
       items: [
         {
-          title: "History",
-          url: "#",
+          title: "Active Roadmaps",
+          url: "/dashboard/roadmaps",
         },
         {
           title: "Starred",
@@ -72,7 +72,7 @@ const data = {
       ],
     },
     {
-      title: "Models",
+      title: "Problems",
       url: "#",
       icon: Bot,
       items: [
@@ -91,7 +91,7 @@ const data = {
       ],
     },
     {
-      title: "Documentation",
+      title: "Resources",
       url: "#",
       icon: BookOpen,
       items: [
@@ -114,7 +114,7 @@ const data = {
       ],
     },
     {
-      title: "Settings",
+      title: "Certificates",
       url: "#",
       icon: Settings2,
       items: [
@@ -164,7 +164,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+        {/* <NavProjects projects={data.projects} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser />
