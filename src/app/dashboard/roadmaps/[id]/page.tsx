@@ -3,8 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { SidebarInset } from "@/components/ui/sidebar";
+import { SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { toast } from 'sonner';
+import Roadmap from '@/components/current-roadmap';
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbSeparator, BreadcrumbPage } from '@/components/ui/breadcrumb';
+import { Separator } from '@radix-ui/react-separator';
 
 export default function Page() {
   const { status } = useSession();
@@ -46,21 +49,45 @@ export default function Page() {
   }, [status, router, params.id]);
 
   if (status === 'unauthenticated') return null;
+  if (loading) return null; // Let your loading.tsx handle the spinner
 
+  // ...existing code...
   return (
     <SidebarInset>
-      {loading ? (
-        <div className="flex justify-center items-center h-[60vh]">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
+      <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+        <div className="flex items-center gap-2 px-4">
+          <SidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard">
+                  Dashboard
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem className="hidden md:block">
+                <BreadcrumbLink href="/dashboard/roadmaps">
+                  Roadmaps
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator className="hidden md:block" />
+              <BreadcrumbItem>
+                <BreadcrumbPage>
+                  {data?.roadmap_title || "Loading..."}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
-      ) : error ? (
+      </header>
+      {error ? (
         <div className="p-4 text-red-600 font-semibold">{error}</div>
       ) : (
-        <div className="p-4">
-          <h1 className="text-2xl font-bold mb-4">
-            Roadmap: {data?.title || params.id}
-          </h1>
-        </div>
+        <Roadmap props={data} roadmapId={params.id as string} />
       )}
     </SidebarInset>
   );

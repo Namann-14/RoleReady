@@ -1,3 +1,4 @@
+'use client'
 import { SidebarInset } from "@/components/ui/sidebar";
 import { motion } from "framer-motion";
 

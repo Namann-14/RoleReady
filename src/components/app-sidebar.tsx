@@ -12,6 +12,7 @@ import {
   PieChart,
   Settings2,
   SquareTerminal,
+  Award
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -52,89 +53,20 @@ const data = {
   ],
   navMain: [
     {
-      title: "Roadmaps",
-      url: "#",
       icon: SquareTerminal,
       isActive: true,
-      items: [
-        {
-          title: "Active Roadmaps",
-          url: "/dashboard/roadmaps",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
+      title: "Active Roadmaps",
+      url: "/dashboard/roadmaps",
     },
     {
-      title: "Problems",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Resources",
-      url: "#",
+      url: "/dashboard/resources",
       icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
+      title: "Resources",
     },
     {
-      title: "Certificates",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
+      url: "/dashboard/certifications",
+      icon: Award,
+      title: "Certifications",
     },
   ],
   projects: [

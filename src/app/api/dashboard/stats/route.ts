@@ -21,16 +21,59 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Get roadmap stats
-    const totalRoadmaps = await AIRoadmap.countDocuments({ user: user._id });
-    const roadmapProgress = await RoadmapProgress.find({ user: user._id });
-    const activeRoadmaps = roadmapProgress.filter(rp => !rp.completedAt).length;
-    const completedRoadmaps = roadmapProgress.filter(rp => rp.completedAt).length;
+    // Get all roadmaps for this user
+    const allRoadmaps = await AIRoadmap.find({ user: user._id });
+    const totalRoadmaps = allRoadmaps.length;
 
-    // Calculate completed skills
-    const completedSkills = roadmapProgress.reduce((total, rp) => {
-      return total + rp.progress.filter((p: {completed: boolean}) => p.completed).length;
-    }, 0);
+    // Get all progress records
+    const roadmapProgress = await RoadmapProgress.find({ user: user._id });
+
+    // Calculate roadmap completion stats
+    let activeRoadmaps = 0;
+    let completedRoadmaps = 0;
+    let totalCompletedItems = 0;
+    let totalPossibleItems = 0;
+
+    for (const roadmap of allRoadmaps) {
+      const progress = roadmapProgress.find(rp => rp.roadmapId === roadmap._id.toString());
+      
+      // Calculate total possible items in this roadmap
+      let roadmapTotalItems = 0;
+      if (roadmap.phases && Array.isArray(roadmap.phases)) {
+        roadmap.phases.forEach((phase: any) => {
+          if (phase.skills_to_acquire) roadmapTotalItems += phase.skills_to_acquire.length;
+          if (phase.references) roadmapTotalItems += phase.references.length;
+          if (phase.video_links) roadmapTotalItems += phase.video_links.length;
+        });
+      }
+
+      totalPossibleItems += roadmapTotalItems;
+
+      if (progress) {
+        const completedItems = progress.progress.filter((p: any) => p.completed).length;
+        totalCompletedItems += completedItems;
+
+        // Check if roadmap is completed (all items checked)
+        if (roadmapTotalItems > 0 && completedItems === roadmapTotalItems) {
+          completedRoadmaps++;
+          // Update progress record to mark as completed if not already
+          if (!progress.completedAt) {
+            progress.completedAt = new Date();
+            await progress.save();
+          }
+        } else if (completedItems > 0) {
+          activeRoadmaps++;
+        }
+      } else if (roadmapTotalItems > 0) {
+        // Roadmap exists but no progress yet
+        activeRoadmaps++;
+      }
+    }
+
+    // Calculate overall completion percentage
+    const overallCompletion = totalPossibleItems > 0 
+      ? Math.round((totalCompletedItems / totalPossibleItems) * 100)
+      : 0;
 
     // Get quiz stats
     const quizAttempts = await QuizAttempt.find({ user: user._id }).sort({ completedAt: -1 });
@@ -38,25 +81,34 @@ export async function GET(request: NextRequest) {
       ? Math.round(quizAttempts.reduce((sum, quiz) => sum + quiz.score, 0) / quizAttempts.length)
       : 0;
 
-    // Calculate study streak (simplified - days with activity)
-    const recentActivity = await QuizAttempt.find({ 
-      user: user._id,
-      completedAt: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) }
-    }).sort({ completedAt: -1 });
+    // Calculate study streak using progress updates and quiz attempts
+    const allActivities = [
+      ...quizAttempts.map(q => ({ completedAt: q.completedAt })),
+      ...roadmapProgress.flatMap(rp => 
+        rp.progress
+          .filter((p: any) => p.completed)
+          .map(() => ({ completedAt: rp.updatedAt || rp.startedAt }))
+      )
+    ];
 
-    const studyStreak = calculateStudyStreak(recentActivity);
+    const studyStreak = calculateStudyStreak(allActivities);
 
-    // Calculate total study hours (simplified estimation)
-    const studyHours = quizAttempts.length * 0.5 + completedSkills * 1.5; // Rough estimation
+    // Calculate estimated study hours (more realistic calculation)
+    const studyHours = Math.round(
+      (totalCompletedItems * 0.5) + // 30 min per completed item
+      (quizAttempts.length * 0.25)   // 15 min per quiz
+    );
 
     return NextResponse.json({
-      activeRoadmaps,
-      completedSkills,
-      averageScore,
-      studyHours: Math.round(studyHours),
-      studyStreak,
       totalRoadmaps,
-      completedRoadmaps
+      activeRoadmaps,
+      completedRoadmaps,
+      completedSkills: totalCompletedItems,
+      totalPossibleItems,
+      overallCompletion,
+      averageScore,
+      studyHours,
+      studyStreak
     });
 
   } catch (error) {
@@ -70,20 +122,37 @@ function calculateStudyStreak(activities: any[]): number {
   
   let streak = 0;
   const today = new Date();
-  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+  today.setHours(0, 0, 0, 0); // Reset to start of day
   
-  // Simple streak calculation - consecutive days with activity
-  const activityDates = activities.map(a => new Date(a.completedAt).toDateString());
-  const uniqueDates = [...new Set(activityDates)].sort().reverse();
+  // Get unique activity dates in descending order
+  const activityDates = activities
+    .map(a => {
+      const date = new Date(a.completedAt);
+      date.setHours(0, 0, 0, 0);
+      return date.getTime();
+    })
+    .filter((date, index, array) => array.indexOf(date) === index) // Remove duplicates
+    .sort((a, b) => b - a); // Sort descending (most recent first)
   
-  for (let i = 0; i < uniqueDates.length; i++) {
-    const activityDate = new Date(uniqueDates[i]);
-    const expectedDate = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-    
-    if (activityDate.toDateString() === expectedDate.toDateString()) {
+  // Check for consecutive days starting from today or yesterday
+  let checkDate = today.getTime();
+  let foundToday = false;
+  
+  for (const activityDate of activityDates) {
+    if (activityDate === checkDate) {
       streak++;
+      foundToday = true;
+      checkDate -= 24 * 60 * 60 * 1000; // Move to previous day
+    } else if (activityDate === checkDate && foundToday) {
+      streak++;
+      checkDate -= 24 * 60 * 60 * 1000;
+    } else if (!foundToday && activityDate === today.getTime() - 24 * 60 * 60 * 1000) {
+      // Started yesterday, continue streak
+      streak++;
+      foundToday = true;
+      checkDate = activityDate - 24 * 60 * 60 * 1000;
     } else {
-      break;
+      break; // Streak broken
     }
   }
   

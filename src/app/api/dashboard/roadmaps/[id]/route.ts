@@ -5,21 +5,20 @@ import { NextRequest, NextResponse } from "next/server";
 import AIRoadmap from "@/models/aiRoadmap.model";
 import User from "@/models/user.model";
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, context: { params: { id: string } }) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const roadmapId = params.id;
+    const { id: roadmapId } = await context.params; // <-- await params
     if (!roadmapId) {
       return NextResponse.json({ error: "Roadmap ID is required" }, { status: 400 });
     }
 
     await ConnectToDatabase();
 
-    // Ensure the roadmap belongs to the authenticated user
     const user = await User.findOne({ email: session.user.email });
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

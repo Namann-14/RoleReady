@@ -18,8 +18,8 @@ const RoadmapProgressSchema = new Schema<IRoadmapProgress>(
     roadmapId: { type: String, required: true },
     progress: [
       {
-        resourceId: { type: String },
-        completed: { type: Boolean },
+        resourceId: { type: String, required: true },
+        completed: { type: Boolean, default: false },
       },
     ],
     certificateIssued: { type: Boolean, default: false },
